@@ -244,7 +244,7 @@ describe('Watch Tests', () => {
   });
 
 
-  it('should handle onError mechanism', async () => {
+  it('should handle watch onError callback', async () => {
     const abortController = new AbortController();
     const onResult = () => { }; // no-op
     let receivedErrorCount = 0;
