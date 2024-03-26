@@ -1,4 +1,4 @@
-import { QueryResult, SQLWatchOptions } from '@journeyapps/powersync-sdk-common';
+import { SQLWatchOptions } from '@journeyapps/powersync-sdk-common';
 import { MaybeRef, Ref, ref, toValue, watchEffect } from 'vue';
 import { usePowerSync } from './powerSync';
 
@@ -29,23 +29,6 @@ export const usePowerSyncWatchedQuery = <T = any>(
       return;
     }
 
-    // (async () => {
-    //   try {
-    //     for await (const result of powerSync.value.watch(toValue(sqlStatement), toValue(parameters), {
-    //       ...options,
-    //       signal: abortController.signal
-    //     })) {
-    //       data.value = result.rows?._array ?? [];
-    //       error.value = undefined;
-    //     }
-    //   } catch (e) {
-    //     data.value = [];
-
-    //     const wrappedError = new Error('PowerSync failed to fetch data: ' + e.message);
-    //     wrappedError.cause = e; // Include the original error as the cause
-    //     error.value = wrappedError;
-    //   }
-    // })();
     const onResult = (result) => {
       data.value = result.rows?._array ?? [];
       error.value = undefined;
