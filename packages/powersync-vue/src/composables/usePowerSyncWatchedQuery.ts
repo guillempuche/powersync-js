@@ -23,11 +23,29 @@ export const usePowerSyncWatchedQuery = <T = any>(
     // Abort any previous watches when the effect triggers again, or when the component is unmounted
     onCleanup(() => abortController.abort())
     abortController = new AbortController();
+
     if (!powerSync) {
       error.value = new Error('PowerSync not configured.')
       return;
     }
 
+    // (async () => {
+    //   try {
+    //     for await (const result of powerSync.value.watch(toValue(sqlStatement), toValue(parameters), {
+    //       ...options,
+    //       signal: abortController.signal
+    //     })) {
+    //       data.value = result.rows?._array ?? [];
+    //       error.value = undefined;
+    //     }
+    //   } catch (e) {
+    //     data.value = [];
+
+    //     const wrappedError = new Error('PowerSync failed to fetch data: ' + e.message);
+    //     wrappedError.cause = e; // Include the original error as the cause
+    //     error.value = wrappedError;
+    //   }
+    // })();
     const onResult = (result) => {
       data.value = result.rows?._array ?? [];
       error.value = undefined;
@@ -39,13 +57,12 @@ export const usePowerSyncWatchedQuery = <T = any>(
       wrappedError.cause = e; // Include the original error as the cause
       error.value = wrappedError;
     };
-    const watchOptions = {
+
+    powerSync.value.watch(toValue(sqlStatement), toValue(parameters), { onResult, onError }, {
       ...options,
       signal: abortController.signal
-    };
+    });
 
-
-    powerSync.value.query(toValue(sqlStatement), toValue(parameters)).watch(onResult, onError, watchOptions);
   });
 
   return { data, error };

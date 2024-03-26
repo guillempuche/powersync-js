@@ -12,10 +12,10 @@ const PowerSyncKey = Symbol();
  * Needs to be installed on a Vue instance using `app.use()`.
  */
 export function createPowerSync(powerSyncPluginOptions: {
-  powerSync: MaybeRef<AbstractPowerSyncDatabase>;
+  database: MaybeRef<AbstractPowerSyncDatabase>;
 }) {
   const install = (app: App) => {
-    app.provide(PowerSyncKey, ref(powerSyncPluginOptions.powerSync));
+    app.provide(PowerSyncKey, ref(powerSyncPluginOptions.database));
   };
   return { install }
 }
@@ -27,8 +27,8 @@ export function createPowerSync(powerSyncPluginOptions: {
  * 
  * If the key parameter is provided, the client will be provided under that key instead of the default PowerSync key.
  */
-export function providePowerSync(powerSync: MaybeRef<AbstractPowerSyncDatabase>, key: string | undefined = undefined) {
-  provide(key || PowerSyncKey, ref(powerSync));
+export function providePowerSync(database: MaybeRef<AbstractPowerSyncDatabase>, key: string | undefined = undefined) {
+  provide(key || PowerSyncKey, ref(database));
 }
 
 /**
@@ -44,8 +44,8 @@ export const usePowerSync = (key: string | undefined = undefined) => {
   if (!hasInjectionContext()) {
     throw setupTopLevelWarningMessage;
   }
-  const powerSync =  inject<Ref<AbstractPowerSyncDatabase> | undefined>(key || PowerSyncKey); 
-  
+  const powerSync = inject<Ref<AbstractPowerSyncDatabase> | undefined>(key || PowerSyncKey);
+
   if (!powerSync) {
     console.warn('[PowerSync warn]: No PowerSync client found.');
   }

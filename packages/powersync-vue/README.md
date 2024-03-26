@@ -9,12 +9,12 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { createPowerSync } from '@journeyapps/powersync-vue'
 
-const powerSync = // Setup PowerSync client
+const db = // Setup PowerSync client
 
 const app = createApp(App);
-const powerSyncPlugin = createPowerSync({powerSync});
+const powerSync = createPowerSync({database: db});
 
-app.use(powerSyncPlugin);
+app.use(powerSync);
 app.mount('#app');
 ```
 
@@ -31,10 +31,10 @@ Both `createPowerSync` and `providePowerSync` leverage Vue's [provide/inject mec
 <script setup lang="ts">
 import { providePowerSync } from '@journeyapps/powersync-vue'
 
-const powerSync = // Setup PowerSync client
+const db = // Setup PowerSync client
 
 // all descendant components will access this client when using the composables
-providePowerSync(powerSync);
+providePowerSync(db);
 </script>
 ```
 
@@ -49,7 +49,7 @@ import { usePowerSync } from '@journeyapps/powersync-vue';
 import { ref } from 'vue';
 
 const powersync = usePowerSync();
-const list =  ref<any[]>([]);
+const list = ref<any[]>([]);
 powersync.value.getAll('SELECT * from lists').then((l: any[]) => list.value = l);
 </script>
 
