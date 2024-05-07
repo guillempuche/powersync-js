@@ -10,6 +10,9 @@
       "channel": "preview"
     },
     "preview": {
+      "android": {
+        "buildType": "apk"
+      },
       "channel": "preview",
       "distribution": "internal"
     },

@@ -23,6 +23,7 @@ const config: ExpoConfig = {
     resizeMode: 'contain',
     backgroundColor: '#ffffff'
   },
+  owner: 'journeyapps',
   updates: {
     url: `https://u.expo.dev/${projectId}`
   },
