@@ -9,7 +9,13 @@ import {
   SharedSyncImplementation
 } from '../../worker/sync/SharedSyncImplementation';
 import { AbstractSharedSyncClientProvider } from '../../worker/sync/AbstractSharedSyncClientProvider';
-import { PowerSyncConnectionOptions, PowerSyncCredentials, SyncStatus, SyncStatusOptions } from '@powersync/common';
+import {
+  PowerSyncConnectionOptions,
+  PowerSyncCredentials,
+  PowerSyncDisconnectOptions,
+  SyncStatus,
+  SyncStatusOptions
+} from '@powersync/common';
 import { openWorkerDatabasePort } from '../../worker/db/open-worker-database';
 
 /**
@@ -123,10 +129,12 @@ export class SharedWebStreamingSyncImplementation extends WebStreamingSyncImplem
       }
     });
 
+    this.logger.warn('Hitting here');
     /**
      * Pass along any sync status updates to this listener
      */
     this.clientProvider = new SharedSyncClientProvider(this.webOptions, (status) => {
+      this.logger.warn('Updating sync', status.lastSyncedAt, status.hasSynced);
       this.iterateListeners((l) => this.updateSyncStatus(status));
     });
 
@@ -147,9 +155,10 @@ export class SharedWebStreamingSyncImplementation extends WebStreamingSyncImplem
     return this.syncManager.connect(options);
   }
 
-  async disconnect(): Promise<void> {
+  async disconnect(options: PowerSyncDisconnectOptions): Promise<void> {
+    this.logger.error('SJARED', options);
     await this.waitForReady();
-    return this.syncManager.disconnect();
+    return this.syncManager.disconnect(options);
   }
 
   async getWriteCheckpoint(): Promise<string> {

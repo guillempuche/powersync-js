@@ -31,6 +31,7 @@ import { LOGIN_ROUTE, SQL_CONSOLE_ROUTE, TODO_LISTS_ROUTE } from '@/app/router';
 export default function ViewsLayout({ children }: { children: React.ReactNode }) {
   const powerSync = usePowerSync();
   const status = useStatus();
+  console.log(status.hasSynced);
   const supabase = useSupabase();
   const navigate = useNavigate();
 
@@ -72,8 +73,7 @@ export default function ViewsLayout({ children }: { children: React.ReactNode })
             color="inherit"
             aria-label="menu"
             sx={{ mr: 2 }}
-            onClick={() => setOpenDrawer(!openDrawer)}
-          >
+            onClick={() => setOpenDrawer(!openDrawer)}>
             <MenuIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }}>
@@ -82,6 +82,7 @@ export default function ViewsLayout({ children }: { children: React.ReactNode })
           <NorthIcon sx={{ marginRight: '-10px' }} color={status?.dataFlowStatus.uploading ? 'primary' : 'inherit'} />
           <SouthIcon color={status?.dataFlowStatus.downloading ? 'primary' : 'inherit'} />
           {status?.connected ? <WifiIcon /> : <SignalWifiOffIcon />}
+          {status.hasSynced ? 'true' : 'false'};
         </Toolbar>
       </S.TopBar>
       <Drawer anchor={'left'} open={openDrawer} onClose={() => setOpenDrawer(false)}>
@@ -95,8 +96,7 @@ export default function ViewsLayout({ children }: { children: React.ReactNode })
                   await item.beforeNavigate?.();
                   navigate(item.path);
                   setOpenDrawer(false);
-                }}
-              >
+                }}>
                 <ListItemIcon>{item.icon()}</ListItemIcon>
                 <ListItemText primary={item.title} />
               </ListItemButton>

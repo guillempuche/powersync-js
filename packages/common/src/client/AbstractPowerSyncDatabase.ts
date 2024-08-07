@@ -27,6 +27,7 @@ import {
   AbstractStreamingSyncImplementation,
   DEFAULT_CRUD_UPLOAD_THROTTLE_MS,
   PowerSyncConnectionOptions,
+  PowerSyncDisconnectOptions,
   StreamingSyncImplementation,
   StreamingSyncImplementationListener
 } from './sync/stream/AbstractStreamingSyncImplementation';
@@ -290,6 +291,7 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
     const version = await this.database.execute('SELECT powersync_rs_version()');
     this.sdkVersion = version.rows?.item(0)['powersync_rs_version()'] ?? '';
     await this.updateSchema(this.options.schema);
+    console.log('!!!!!!! init!');
     this.updateHasSynced();
     await this.database.execute('PRAGMA RECURSIVE_TRIGGERS=TRUE');
     this.ready = true;
@@ -300,6 +302,12 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
     const syncedSQL = 'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
 
     const abortController = new AbortController();
+
+    if (this.hasSyncedWatchDisposer) {
+      this.hasSyncedWatchDisposer();
+      this.hasSyncedWatchDisposer = undefined;
+    }
+
     this.hasSyncedWatchDisposer = () => abortController.abort();
 
     // Abort the watch after the first sync is detected
@@ -309,7 +317,7 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
       {
         onResult: (result) => {
           const hasSynced = !!result.rows?.length;
-
+          console.log('On result', hasSynced);
           if (hasSynced != this.currentStatus.hasSynced) {
             this.currentStatus = new SyncStatus({ ...this.currentStatus.toJSON(), hasSynced });
             this.iterateListeners((l) => l.statusChanged?.(this.currentStatus));
@@ -378,6 +386,7 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
     this.syncStreamImplementation = this.generateSyncStreamImplementation(connector);
     this.syncStatusListenerDisposer = this.syncStreamImplementation.registerListener({
       statusChanged: (status) => {
+        console.log('Triggering', !!status.lastSyncedAt);
         this.currentStatus = new SyncStatus({
           ...status.toJSON(),
           hasSynced: this.currentStatus?.hasSynced || !!status.lastSyncedAt
@@ -396,9 +405,10 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
    *
    * Use {@link connect} to connect again.
    */
-  async disconnect() {
+  async disconnect(options?: PowerSyncDisconnectOptions) {
     await this.waitForReady();
-    await this.syncStreamImplementation?.disconnect();
+    console.warn('disconnect', options);
+    await this.syncStreamImplementation?.disconnect(options);
     this.syncStatusListenerDisposer?.();
     await this.syncStreamImplementation?.dispose();
     this.syncStreamImplementation = undefined;
@@ -413,7 +423,9 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
    * To preserve data in local-only tables, set clearLocal to false.
    */
   async disconnectAndClear(options = DEFAULT_DISCONNECT_CLEAR_OPTIONS) {
-    await this.disconnect();
+    // The data has been deleted - reset the sync status
+
+    await this.disconnect({ clear: true });
     await this.waitForReady();
 
     const { clearLocal } = options;
@@ -441,6 +453,9 @@ export abstract class AbstractPowerSyncDatabase extends BaseObserver<PowerSyncDB
         await tx.execute(`DELETE FROM ${quoteIdentifier(row.name)} WHERE 1`);
       }
     });
+
+    // Priming the has synced trigger.
+    this.updateHasSynced();
   }
 
   /**

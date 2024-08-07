@@ -10,7 +10,8 @@ import {
   BaseObserver,
   SqliteBucketStorage,
   SyncStatus,
-  AbortOperation
+  AbortOperation,
+  PowerSyncDisconnectOptions
 } from '@powersync/common';
 import {
   WebStreamingSyncImplementation,
@@ -212,10 +213,16 @@ export class SharedSyncImplementation
     return navigator.locks.request('shared-sync-connect', () => this.syncStreamClient?.connect(options));
   }
 
-  async disconnect() {
+  async disconnect(options?: PowerSyncDisconnectOptions) {
     await this.waitForReady();
+
+    if (options?.clear) {
+      // this.syncStreamClient?.syncStatus.lastSyncedAt = undefined;
+      this.updateAllStatuses({ lastSyncedAt: undefined });
+    }
+
     // This effectively queues connect and disconnect calls. Ensuring multiple tabs' requests are synchronized
-    return navigator.locks.request('shared-sync-connect', () => this.syncStreamClient?.disconnect());
+    return navigator.locks.request('shared-sync-connect', () => this.syncStreamClient?.disconnect(options));
   }
 
   /**
@@ -287,6 +294,8 @@ export class SharedSyncImplementation
    */
   private updateAllStatuses(status: SyncStatusOptions) {
     this.syncStatus = new SyncStatus(status);
+    console.warn('COMING');
+    console.trace('UPDATING', JSON.stringify(this.syncStatus), JSON.stringify(status));
     this.ports.forEach((p) => p.clientProvider.statusChanged(status));
   }
 

@@ -81,6 +81,17 @@ export interface PowerSyncConnectionOptions {
   params?: Record<string, StreamingSyncRequestParameterType>;
 }
 
+/**
+ * Configurable options to be used when disconnecting from the PowerSync
+ * backend instance.
+ */
+export interface PowerSyncDisconnectOptions {
+  /**
+   * If true, clear the sync status.
+   */
+  clear?: boolean;
+}
+
 export interface StreamingSyncImplementation extends BaseObserver<StreamingSyncImplementationListener>, Disposable {
   /**
    * Connects to the sync service
@@ -90,7 +101,7 @@ export interface StreamingSyncImplementation extends BaseObserver<StreamingSyncI
    * Disconnects from the sync services.
    * @throws if not connected or if abort is not controlled internally
    */
-  disconnect(): Promise<void>;
+  disconnect(options?: PowerSyncDisconnectOptions): Promise<void>;
   getWriteCheckpoint: () => Promise<string>;
   hasCompletedSync: () => Promise<boolean>;
   isConnected: boolean;
@@ -118,11 +129,12 @@ export abstract class AbstractStreamingSyncImplementation
   extends BaseObserver<StreamingSyncImplementationListener>
   implements StreamingSyncImplementation
 {
-  protected _lastSyncedAt: Date | null;
   protected options: AbstractStreamingSyncImplementationOptions;
   protected abortController: AbortController | null;
   protected crudUpdateListener?: () => void;
   protected streamingSyncPromise?: Promise<void>;
+  protected isDisposed: boolean;
+  protected id: number = Math.round(Math.random() * 200);
 
   syncStatus: SyncStatus;
   triggerCrudUpload: () => void;
@@ -130,7 +142,6 @@ export abstract class AbstractStreamingSyncImplementation
   constructor(options: AbstractStreamingSyncImplementationOptions) {
     super();
     this.options = { ...DEFAULT_STREAMING_SYNC_OPTIONS, ...options };
-
     this.syncStatus = new SyncStatus({
       connected: false,
       lastSyncedAt: undefined,
@@ -139,6 +150,7 @@ export abstract class AbstractStreamingSyncImplementation
         downloading: false
       }
     });
+    this.isDisposed = false;
     this.abortController = null;
 
     this.triggerCrudUpload = throttle(
@@ -146,6 +158,7 @@ export abstract class AbstractStreamingSyncImplementation
         if (!this.syncStatus.connected || this.syncStatus.dataFlowStatus.uploading) {
           return;
         }
+        this.logger.error('Aborted:', this.abortController?.signal.aborted);
         this._uploadAllCrud();
       },
       this.options.crudUploadThrottleMs,
@@ -196,6 +209,7 @@ export abstract class AbstractStreamingSyncImplementation
   }
 
   async dispose() {
+    this.logger.error('DISPOSE CALLED!!');
     this.crudUpdateListener?.();
     this.crudUpdateListener = undefined;
   }
@@ -222,6 +236,7 @@ export abstract class AbstractStreamingSyncImplementation
         });
         while (true) {
           try {
+            this.logger.error('abort2:', this.abortController?.signal.aborted);
             const done = await this.uploadCrudBatch();
             if (done) {
               break;
@@ -295,7 +310,8 @@ export abstract class AbstractStreamingSyncImplementation
     });
   }
 
-  async disconnect(): Promise<void> {
+  async disconnect(options?: PowerSyncDisconnectOptions): Promise<void> {
+    this.logger.error('disconnect called');
     if (!this.abortController) {
       return;
     }
@@ -304,6 +320,7 @@ export abstract class AbstractStreamingSyncImplementation
     if (!this.abortController.signal.aborted) {
       this.abortController.abort(new AbortOperation('Disconnect has been requested'));
     }
+    const { clear = false } = options ?? {};
 
     // Await any pending operations before completing the disconnect operation
     try {
@@ -315,7 +332,25 @@ export abstract class AbstractStreamingSyncImplementation
     this.streamingSyncPromise = undefined;
 
     this.abortController = null;
-    this.updateSyncStatus({ connected: false });
+    this.logger.error('ABSTRACT: DISCONECT', options, clear);
+    this.logger.trace();
+    if (clear) {
+      this.logger.error('disconnect called with ckear');
+
+      this.syncStatus = new SyncStatus({
+        connected: false,
+        lastSyncedAt: undefined,
+        dataFlow: {
+          uploading: false,
+          downloading: false
+        }
+      });
+      this.logger.error('clear1');
+      this.updateSyncStatus(this.syncStatus);
+    } else {
+      this.logger.error('clear2');
+      this.updateSyncStatus({ connected: false });
+    }
   }
 
   /**
@@ -622,10 +657,16 @@ export abstract class AbstractStreamingSyncImplementation
     if (!this.syncStatus.isEqual(updatedStatus)) {
       this.syncStatus = updatedStatus;
       // Only trigger this is there was a change
+      console.log('Aborted?', this.id, this.abortController?.signal.aborted);
+      console.log('1. Some iterate', updatedStatus.lastSyncedAt);
+      console.trace();
       this.iterateListeners((cb) => cb.statusChanged?.(updatedStatus));
     }
 
     // trigger this for all updates
+    console.log('Aborted222?', this.abortController?.signal.aborted);
+
+    console.log('2. Some iterate', this.id, updatedStatus.lastSyncedAt);
     this.iterateListeners((cb) => cb.statusUpdated?.(options));
   }
 
